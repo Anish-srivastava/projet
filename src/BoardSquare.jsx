@@ -1,11 +1,12 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import Square from './Square'
 import Piece from './Piece'
 import { useDrop } from 'react-dnd'
 import { handleMove } from './Game'
 import { gameSubject } from './Game'
 import Promote from './Promote'
-export default function BoardSquare({
+
+function BoardSquare({
   piece,
   black,
   position,
@@ -27,15 +28,33 @@ export default function BoardSquare({
     )
     return () => subscribe.unsubscribe()
   }, [position])
+  
+  // Memoize piece rendering to avoid unnecessary re-renders
+  const pieceContent = useMemo(() => {
+    if (promotion) {
+      return <Promote promotion={promotion} />
+    }
+    if (piece) {
+      return <Piece piece={piece} position={position} />
+    }
+    return null
+  }, [promotion, piece, position])
+  
   return (
     <div className="board-square" ref={drop}>
       <Square black={black}>
-        {promotion ? (
-          <Promote promotion={promotion} />
-        ) : piece ? (
-          <Piece piece={piece} position={position} />
-        ) : null}
+        {pieceContent}
       </Square>
     </div>
   )
 }
+
+// Memoize BoardSquare to prevent re-renders when props haven't changed
+export default React.memo(BoardSquare, (prevProps, nextProps) => {
+  // Only re-render if piece, black, or position changed
+  return (
+    prevProps.piece === nextProps.piece &&
+    prevProps.black === nextProps.black &&
+    prevProps.position === nextProps.position
+  )
+})

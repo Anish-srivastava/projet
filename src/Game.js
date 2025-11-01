@@ -3,9 +3,12 @@ import { BehaviorSubject } from 'rxjs'
 import { map } from 'rxjs/operators'
 import { auth } from './firebase'
 import { fromDocRef } from 'rxfire/firestore'
+import { updateDoc } from 'firebase/firestore'
 
 let gameRef
 let member
+let lastMove = null
+let externalGameOver = false
 
 const chess = new Chess()
 
@@ -50,10 +53,11 @@ export async function initGame(gameRefFb) {
                     pendingPromotion,
                     isGameOver,
                     position: member.piece,
-                    member,
-                    oponent,
-                    result: isGameOver ? getGameResult() : null,
-                    ...restOfGame
+                        currentPlayer: chess.turn(),
+                        member,
+                        oponent,
+                        result: isGameOver ? getGameResult() : null,
+                        ...restOfGame
                 }
             })
         )
@@ -97,6 +101,8 @@ export function handleMove(from, to) {
 
 
 export function move(from, to, promotion) {
+    // prevent moves after an external game over (e.g., timeout)
+    if (externalGameOver || chess.game_over()) return
     let tempMove = { from, to }
     if (promotion) {
         tempMove.promotion = promotion
@@ -106,6 +112,8 @@ export function move(from, to, promotion) {
         if (member.piece === chess.turn()) {
             const legalMove = chess.move(tempMove)
             if (legalMove) {
+                // save lastMove so UI can display it
+                lastMove = legalMove
                 updateGame()
             }
         }
@@ -113,6 +121,8 @@ export function move(from, to, promotion) {
         const legalMove = chess.move(tempMove)
 
         if (legalMove) {
+            // save lastMove for local mode
+            lastMove = legalMove
             updateGame()
         }
     }
@@ -122,25 +132,58 @@ export function move(from, to, promotion) {
 async function updateGame(pendingPromotion, reset) {
     const isGameOver = chess.game_over()
     if (gameRef) {
-        const updatedData = { gameData: chess.fen(), pendingPromotion: pendingPromotion || null }
+        const updatedData = { gameData: chess.fen(), pendingPromotion: pendingPromotion || null, currentPlayer: chess.turn() }
         console.log({ updateGame })
         if (reset) {
             updatedData.status = 'over'
         }
+        // include lastMove in the remote game document so subscribers can pick it up
+        if (lastMove) {
+            updatedData.lastMove = lastMove
+        }
         await gameRef.update(updatedData)
+        // clear lastMove after publishing
+        lastMove = null
     } else {
         const newGame = {
             board: chess.board(),
             pendingPromotion,
             isGameOver,
-            position: chess.turn(),
-            result: isGameOver ? getGameResult() : null
+                position: chess.turn(),
+                currentPlayer: chess.turn(),
+            result: isGameOver ? getGameResult() : null,
+            lastMove: lastMove || null
         }
         localStorage.setItem('savedGame', chess.fen())
         gameSubject.next(newGame)
+        // clear lastMove for local
+        lastMove = null
     }
 
 
+}
+ 
+export async function endGameByTimeout(loserColor) {
+    // mark external game over and publish result
+    externalGameOver = true
+    const winner = loserColor === 'white' ? 'Black' : 'White'
+    const result = `TIMEOUT - ${winner} wins`
+    if (gameRef) {
+        // update remote doc
+        await gameRef.update({ status: 'over', result, currentPlayer: chess.turn() })
+    } else {
+        // publish locally
+        const newGame = {
+            board: chess.board(),
+            pendingPromotion: null,
+            isGameOver: true,
+            position: chess.turn(),
+            currentPlayer: chess.turn(),
+            result,
+            lastMove: lastMove || null
+        }
+        gameSubject.next(newGame)
+    }
 }
 function getGameResult() {
     if (chess.in_checkmate()) {
