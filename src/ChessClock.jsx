@@ -214,6 +214,7 @@ export default function ChessClock({
   }, [currentPlayer])
 
   // Listen to localStorage changes (other tabs) when in local mode
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!isLocal) return
     const onStorage = (e) => {
@@ -234,6 +235,7 @@ export default function ChessClock({
   }, [isLocal])
 
   // Listen to Firebase snapshots to keep UI in sync with authoritative remote state
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!gameRef || isLocal) return
     let unsub = null

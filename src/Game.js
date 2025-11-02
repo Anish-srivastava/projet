@@ -1,9 +1,9 @@
 import * as Chess from 'chess.js'
-import { BehaviorSubject } from 'rxjs'
+import { BehaviorSubject, Observable } from 'rxjs'
 import { map } from 'rxjs/operators'
 import { auth } from './firebase'
-import { fromDocRef } from 'rxfire/firestore'
-import { updateDoc } from 'firebase/firestore'
+// note: older rxfire exports like `fromDocRef` may not be available in some versions.
+// We create a small Observable wrapper around Firestore's onSnapshot instead.
 
 let gameRef
 let member
@@ -38,7 +38,11 @@ export async function initGame(gameRefFb) {
         }
         chess.reset()
 
-        gameSubject = fromDocRef(gameRefFb).pipe(
+        gameSubject = new Observable(subscriber => {
+            // Firestore v8 onSnapshot returns an unsubscribe function
+            const unsub = gameRefFb.onSnapshot(doc => subscriber.next(doc), err => subscriber.error(err))
+            return () => { try { if (typeof unsub === 'function') unsub(); else if (unsub && typeof unsub.unsubscribe === 'function') unsub.unsubscribe() } catch (e) {} }
+        }).pipe(
             map(gameDoc => {
                 const game = gameDoc.data()
                 const { pendingPromotion, gameData, lastMove: remotelastMove, ...restOfGame } = game

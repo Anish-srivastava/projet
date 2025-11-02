@@ -1,6 +1,7 @@
-import firebase from "firebase/app";
-import "firebase/firestore";
-import "firebase/auth";
+// Use the compat layer to preserve the older namespaced API (firebase.firestore(), firebase.auth(), etc.)
+import firebase from 'firebase/compat/app'
+import 'firebase/compat/firestore'
+import 'firebase/compat/auth'
 
 //you can either add your firebase config directly like in the tutorial or can also add it as an
 //json string like here https://create-react-app.dev/docs/adding-custom-environment-variables/
@@ -17,9 +18,9 @@ const config = {
 };
 
 const firebaseConfig = config;
-// Initialize Firebase
-firebase.initializeApp(firebaseConfig);
+// Initialize Firebase (compat)
+firebase.initializeApp(firebaseConfig)
 
-export const db = firebase.firestore();
-export const auth = firebase.auth();
-export default firebase;
+export const db = firebase.firestore()
+export const auth = firebase.auth()
+export default firebase

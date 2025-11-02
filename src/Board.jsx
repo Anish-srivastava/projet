@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react'
+import React, { useMemo } from 'react'
 import BoardSquare from './BoardSquare'
 
 function Board({ board, position }) {

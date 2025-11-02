@@ -32,6 +32,7 @@ function GameApp() {
   // if query param provided use it; otherwise undefined so creator must set
   const initialTimeMinutes = initialTimeFromQuery != null ? initialTimeFromQuery : null
   const sharebleLink = window.location.href
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     let subscribe
     async function init() {
